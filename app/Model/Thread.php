@@ -57,6 +57,58 @@ class Thread extends AppModel
 		return $this->query( $result_sql );
 	}
 
+	public function getThreadCnt( $game_id, $age, $area, $sex, $photo_flag )
+	{
+		$sql = 'SELECT count(*) as cnt FROM %s ';
+
+		if( $game_id != 0 
+		||  $age != 0
+		||  $area != 0
+		||  $sex != 0
+		||  $photo_flag != 0
+		)
+		{
+			$sql .= 'WHERE ';
+		}
+
+		if( $game_id != 0 )
+		{
+			$sql .= "game_id = $game_id AND ";
+		}
+		if( $age != 0 )
+		{
+			$sql .= "age = $age AND ";
+		}
+		if( $area != 0 )
+		{
+			$sql .= "area = $area AND ";
+		}
+		if( $sex != 0 )
+		{
+			$sql .= "sex = $sex AND ";
+		}
+		if( $photo_flag != 0 )
+		{
+			$sql .= "photo_flag = $photo_flag AND ";
+		}
+		
+		if( $game_id != 0 
+		||  $age != 0
+		||  $area != 0
+		||  $sex != 0
+		||  $photo_flag != 0
+		)
+		{
+			$sql = substr( $sql, 0, -4);
+		}
+
+		$result_sql = sprintf( $sql, 
+				$this->useTable
+		 );
+
+		return $this->query( $result_sql );
+	}
+
 	public function deleteThread( $id, $device_token, $photo )
 	{
 		$sql = sprintf('DELETE FROM %s WHERE '
@@ -77,7 +129,7 @@ class Thread extends AppModel
 	
 	public function insertThread( $user_name, $device_token, $line_id, $sex, $age, $area, $body, $game_id, $photo )
 	{
-		if($photo === 'no_photo')
+		if($photo == null)
 		{
 			$photo_flag = 2;
 		}

@@ -22,7 +22,16 @@ class ThreadController extends AppController
 		$num = $_GET['num'];
 
 		$results = $this->Thread->getThread( $game_id, $age, $area, $sex, $photo_flag, $num );
-	
+		
+		foreach( $results as $i => $data )
+		{
+			$before_time = $this->convert_before_strtime( $data['thread']['created'] );
+			$results[$i]['thread']['created'] = $before_time;
+		}
+		
+		$thread_all_cnt = $this->Thread->getThreadCnt( $game_id, $age, $area, $sex, $photo_flag );
+		$results[0]['thread']['thread_all_cnt'] = $thread_all_cnt[0][0]['cnt'];
+
 		$this->set( compact('results') );
 		$this->viewClass = 'Json';
 		$this->set( '_serialize', array( 'results' ) );
@@ -73,7 +82,8 @@ class ThreadController extends AppController
 		$area = $_GET['area'];
 		$body = $_GET['body'];
 		$game_id = $_GET['game_id'];
-		$img_path = $_GET['img_path'];
+		$img_path = $_GET['img_path'] === 'no_photo' ? null : $_GET['img_path'];
+		
 
 		$this->Thread->insertThread( 
 					$user_name,
@@ -86,6 +96,36 @@ class ThreadController extends AppController
 					$game_id,
 					$img_path
 		 );
+	}
+
+	public function convert_before_strtime( $str_time )
+	{
+		$timestamp = strtotime( $str_time );
+		$now = time();
+		$diff_time = $now - $timestamp;
+
+		if( $diff_time < 60 )
+		{
+			$time = $diff_time;
+			$unit = '秒前';
+		}
+		elseif( $diff_time < 3600 )
+		{
+			$time = $diff_time / 60;
+			$unit = '分前';
+		}
+		elseif( $diff_time < 86400 )
+		{
+			$time = $diff_time / 3600;
+			$unit = '時間前';
+		}
+		elseif( $diff_time < 2764800 )
+		{
+			$time = $diff_time / 86400;
+			$unit = '日前';
+		}
+
+		return (int)$time . $unit;
 	}
 }
 ?>
