@@ -126,8 +126,34 @@ class Thread extends AppModel
 			return false;
 		}
 	}
+
+	public function selectAllPhoto( $device_token )
+	{
+		$sql = sprintf('SELECT photo FROM %s WHERE device_token = ? AND photo_flag = 1',
+				$this->useTable
+			);
+
+		return $this->query( $sql, array($device_token) );
+	}
+
+	public function deleteAllThread( $device_token )
+	{
+		$sql = sprintf('DELETE FROM %s WHERE '
+			      	.'device_token = ? ',
+				$this->useTable
+		);
+		$ret = $this->query( $sql, array($device_token) );
+		if( empty($ret) )
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
 	
-	public function insertThread( $user_name, $device_token, $line_id, $sex, $age, $area, $body, $game_id, $photo )
+	public function insertThread( $user_name, $device_token, $device, $line_id, $sex, $age, $area, $body, $game_id, $photo, $now_date )
 	{
 		if($photo == null)
 		{
@@ -141,6 +167,7 @@ class Thread extends AppModel
 		$sql = sprintf('INSERT INTO %s ( '
 				.'user_name, '
 				.'device_token, '
+				.'device, '
 				.'line_id, '
 				.'sex, '
 				.'age, '
@@ -162,8 +189,9 @@ class Thread extends AppModel
 				.'?, '
 				.'?, '
 				.'?, '
-				.'now(), '
-				.'now() '
+				.'?, '
+				.'?, '
+				.'? '
 				.') ',
 				$this->useTable
 		);
@@ -171,6 +199,7 @@ class Thread extends AppModel
 		$this->query( $sql, array(
 				$user_name,
 				$device_token,
+				$device,
 				$line_id,
 				$sex,
 				$age,
@@ -179,7 +208,26 @@ class Thread extends AppModel
 				$game_id,
 				$photo_flag,
 				$photo,
+				$now_date,
+				$now_date,
 		) );
+
+		return $this->query( 'SELECT LAST_INSERT_ID() as last_insert_id' );
+	}
+
+	public function updateImageName( $id, $line_id, $image_date )
+	{
+		$sql = sprintf('UPDATE %s SET photo = ? WHERE id = ? AND line_id = ?',
+				$this->useTable
+		);
+		
+		$image_name = $image_date . "_" . $id . "_" . $line_id . ".png";
+
+		$this->query( $sql, array(
+					$image_name,
+					$id,
+					$line_id,
+				) );
 	}
 }
 ?>

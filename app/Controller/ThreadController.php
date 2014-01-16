@@ -39,63 +39,102 @@ class ThreadController extends AppController
 
 	public function delete_thread()
 	{
-		if( !isset($_GET['id']) 
-		||  !isset($_GET['device_token'])
-		||  !isset($_GET['img_path'])
+		if( !isset($_POST['id']) 
+		||  !isset($_POST['device_token'])
+		||  !isset($_POST['img_path'])
 		) return;
 
-		$id = $_GET['id'];
-		$device_token = $_GET['device_token'];
-		$img_path = $_GET['img_path'];
+		$id = $_POST['id'];
+		$device_token = $_POST['device_token'];
+		$img_path = $_POST['img_path'];
 		$ret = $this->Thread->deleteThread( $id, $device_token, $img_path );
 		
-		//スレッド削除処理が成功した場合は写真の削除を行う
 		if($ret == true)
 		{
-
+			$command = 'rm /var/www/html/img_folder_line_game_bbs/' . $img_path;
+			exec( $command );
 		}
-		//スレッド削除処理失敗の場合は写真の削除を行わない
 		else
 		{
-			//エラーログに出力する
+			error_log("deleteThread error, thread_id:" . $id);
+		}	
+	}
+	
+	public function delete_all_thread()
+	{
+		if( !isset($_POST['device_token']) ) return;
+
+		$device_token = $_POST['device_token'];
+		
+		$photo_list = $this->Thread->selectAllPhoto( $device_token );
+		
+		$ret = $this->Thread->deleteAllThread( $device_token );
+		
+		if($ret == true)
+		{
+			foreach( $photo_list as $val )
+			{
+				$photo = $val['thread']['photo'];
+				$command = 'rm /var/www/html/img_folder_line_game_bbs/' . $photo;
+				exec( $command );
+			}
+		}
+		else
+		{
+			error_log("deleteAllThread error, device_token:" . $device_token);
 		}	
 	}
 
 	public function insert_thread()
 	{
-		if( !isset($_GET['user_name'])
-		||  !isset($_GET['device_token']) 
-		||  !isset($_GET['line_id']) 
-		||  !isset($_GET['sex']) 
-		||  !isset($_GET['age']) 
-		||  !isset($_GET['area']) 
-		||  !isset($_GET['body']) 
-		||  !isset($_GET['game_id']) 
-		||  !isset($_GET['img_path']) 
+		if( !isset($_POST['user_name'])
+		||  !isset($_POST['device_token']) 
+		||  !isset($_POST['device']) 
+		||  !isset($_POST['line_id']) 
+		||  !isset($_POST['sex']) 
+		||  !isset($_POST['age']) 
+		||  !isset($_POST['area']) 
+		||  !isset($_POST['body']) 
+		||  !isset($_POST['game_id']) 
+		||  !isset($_POST['img_path']) 
 		) return;
 
-		$user_name = $_GET['user_name'];
-		$device_token = $_GET['device_token'];
-		$line_id = $_GET['line_id'];
-		$sex = $_GET['sex'];
-		$age = $_GET['age'];
-		$area = $_GET['area'];
-		$body = $_GET['body'];
-		$game_id = $_GET['game_id'];
-		$img_path = $_GET['img_path'] === 'no_photo' ? null : $_GET['img_path'];
+		$user_name = $_POST['user_name'];
+		$device_token = $_POST['device_token'];
+		$device = $_POST['device'];
+		$line_id = $_POST['line_id'];
+		$sex = $_POST['sex'];
+		$age = $_POST['age'];
+		$area = $_POST['area'];
+		$body = $_POST['body'];
+		$game_id = $_POST['game_id'];
+		$img_path = $_POST['img_path'] === 'no_photo' ? null : $_POST['img_path'];
 		
+		$now_date = date("Y-m-d H:i:s");
+		$image_date = date("YmdHis");
 
-		$this->Thread->insertThread( 
+		$ret = $this->Thread->insertThread( 
 					$user_name,
 					$device_token,
+					$device,
 					$line_id,
 					$sex,
 					$age,
 					$area,
 					$body,
 					$game_id,
-					$img_path
+					$img_path,
+					$now_date
 		 );
+		
+		$last_insert_id = $ret[0][0]['last_insert_id'];
+		
+		//画像のポストされ、スレッドデータをインサートしたIDがとれた場合、画像の名前の更新と画像の保存を行う
+		if( $img_path != null && $last_insert_id != 0 )
+		{
+			$this->Thread->updateImageName( $last_insert_id, $line_id, $image_date );
+			$this->saveImage( $last_insert_id, $line_id, $image_date);
+		}
 	}
 
 	public function convert_before_strtime( $str_time )
@@ -126,6 +165,22 @@ class ThreadController extends AppController
 		}
 
 		return (int)$time . $unit;
+	}
+
+	public function saveImage( $id, $line_id, $image_date )
+	{
+		$dir_name = "/var/www/html/img_folder_line_game_bbs";
+		
+		if(is_uploaded_file($_FILES["profileImg"]["tmp_name"]))
+		{
+			$extension = pathinfo($_FILES["profileImg"]["name"], PATHINFO_EXTENSION);
+			if($extension == "png")
+			{
+				$image_name = $image_date . "_" . $id . "_" . $line_id . ".png";
+				$upload_file = "{$dir_name}/{$image_name}";
+				move_uploaded_file($_FILES["profileImg"]["tmp_name"], $upload_file);
+			}
+		}
 	}
 }
 ?>
